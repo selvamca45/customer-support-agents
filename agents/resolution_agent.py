@@ -141,6 +141,24 @@ def _norm(text: str) -> str:
     return re.sub(r"\s*>\s*", " > ", re.sub(r"\s+", " ", text or "")).lower()
 
 
+def _path_ok(path: str, kb_norm: str) -> bool:
+    """A menu path is OK if it appears as written, or if EVERY part of it
+    (e.g. "My Orders" and "Return") appears in the passages. This accepts a
+    faithful shortcut but rejects invented pages such as "Order History"."""
+    if _norm(path) in kb_norm:
+        return True
+    segments = [seg.strip().lower() for seg in path.split(">") if seg.strip()]
+
+    def found(seg: str) -> bool:
+        return re.search(rf"\b{re.escape(seg)}\b", kb_norm) is not None
+
+    # The first part may start with a capitalised verb ("Open My Orders"),
+    # so accept it if any ending of it ("my orders") is found.
+    first_words = segments[0].split()
+    first_ok = any(found(" ".join(first_words[i:])) for i in range(len(first_words)))
+    return first_ok and all(found(seg) for seg in segments[1:])
+
+
 def grounding_check(result: ResolutionResult, kb_text: str, kb_sources: list[str],
                     complaint: str = "", order_id: str = "") -> dict:
     """
@@ -152,7 +170,7 @@ def grounding_check(result: ResolutionResult, kb_text: str, kb_sources: list[str
     allowed = _numbers(kb_text) | _numbers(complaint) | _numbers(order_id)
     ungrounded = sorted(n for n in _numbers(result.reply) if n not in allowed)
     kb_norm = _norm(kb_text)
-    bad_paths = sorted({p for p in _UI_PATH.findall(result.reply) if _norm(p) not in kb_norm})
+    bad_paths = sorted({p for p in _UI_PATH.findall(result.reply) if not _path_ok(p, kb_norm)})
     invalid_sources = sorted(s for s in result.sources_used if s not in kb_sources)
     return {
         "grounded": not ungrounded and not bad_paths and not invalid_sources,

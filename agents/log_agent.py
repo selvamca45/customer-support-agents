@@ -16,6 +16,7 @@ produced guarantees the log contains exactly what really happened.
 The LLM's own judgement is still used: it can raise an extra_concern that the fixed
 rules might miss (for example "customer says this is the third time").
 """
+import asyncio
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -48,6 +49,9 @@ class TicketContext:
     kb_text: str = ""                           # from knowledge_agent
     resolution: ResolutionResult | None = None  # from resolution_agent
     result: dict | None = None                  # the logged row, after log_ticket
+    steps: list = field(default_factory=list)   # timeline of agent steps (for the UI)
+    stop_reason: str = ""                       # why the team stopped
+    error: str = ""                             # set if something went wrong
 
 
 def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
@@ -106,11 +110,19 @@ def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
 def make_log_tool(ctx: TicketContext):
     """Create the log_ticket tool, connected to this ticket's context."""
 
-    def log_ticket(extra_concern: str = "") -> str:
+    async def log_ticket(extra_concern: str = "") -> str:
         """Save the current support ticket to the log file and decide the escalation
         status using the company rules. extra_concern: a short reason why a human
         should review this case that the standard rules might miss, or an empty
         string if there is none."""
+        # In a team, the other agents' outputs are stored in ctx while the team runs.
+        # Wait briefly (max 5 s) in case the last one has not been stored yet.
+        for _ in range(50):
+            if ctx.resolution is not None:
+                break
+            await asyncio.sleep(0.1)
+        if ctx.result is not None:  # already logged: never log the same ticket twice
+            return f"LOGGED {ctx.result['ticket_id']} | status={ctx.result['status']} | already logged"
         row = build_ticket_row(ctx, extra_concern)
         append_ticket(row)
         ctx.result = row
@@ -129,7 +141,8 @@ no matching document, legal threats, fraud, payment disputes, low confidence, fa
 Before calling it, review the conversation. Set extra_concern ONLY if a human should review
 the case for a reason those rules could miss, for example: the customer says this is a
 repeated complaint, mentions a health problem, a vulnerable person, or a threat to post on
-social media. Keep it under 12 words. Otherwise pass an empty string.
+social media. Keep it under 12 words. Do NOT repeat anything the rules already cover
+(urgency, anger, lawyers, fraud, payments, hacking). Otherwise pass an empty string.
 
 Do not write anything else and do not reply to the customer."""
 
