@@ -1,0 +1,60 @@
+"""
+config.py - one place for settings shared by the whole project.
+
+- Loads secrets from the .env file (never hard-code keys in code).
+- Defines the important folders (knowledge base, logs).
+- Builds the OpenAI model client that every agent uses.
+"""
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+
+# Folder that contains this file = the project root
+PROJECT_ROOT = Path(__file__).resolve().parent
+load_dotenv(PROJECT_ROOT / ".env")
+
+KB_DIR = PROJECT_ROOT / "knowledge_base"
+LOG_DIR = PROJECT_ROOT / "logs"
+
+# Model can be changed in .env with OPENAI_MODEL=... (default is cheap and fast)
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+
+def get_api_key() -> str:
+    """Read the API key from .env and fail with a clear message if it is missing."""
+    key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not key or key == "your-key-here":
+        raise RuntimeError(
+            "OPENAI_API_KEY is missing. Open the .env file and add a line: "
+            "OPENAI_API_KEY=sk-..."
+        )
+    return key
+
+
+def get_model_client(temperature: float = 0.2) -> OpenAIChatCompletionClient:
+    """
+    Create the LLM client used by all agents.
+    Low temperature = more consistent, factual answers (good for support).
+    """
+    api_key = get_api_key()
+    try:
+        return OpenAIChatCompletionClient(
+            model=MODEL_NAME, api_key=api_key, temperature=temperature
+        )
+    except ValueError:
+        # AutoGen does not know very new model names yet.
+        # In that case we describe the model's abilities ourselves.
+        return OpenAIChatCompletionClient(
+            model=MODEL_NAME,
+            api_key=api_key,
+            temperature=temperature,
+            model_info={
+                "vision": False,
+                "function_calling": True,
+                "json_output": True,
+                "structured_output": True,
+                "family": "unknown",
+            },
+        )
