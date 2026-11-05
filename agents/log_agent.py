@@ -68,7 +68,7 @@ def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
         confidence, draft, coverage = 0.0, "", "none"
 
     status, reasons = decide_escalation(
-        urgency=a.urgency if a else "High",
+        urgency=a.urgency if a else "Medium",
         sentiment=a.sentiment if a else "Neutral",
         risk_flags=list(a.risk_flags) if a else [],
         kb_no_match=kb["no_match"],

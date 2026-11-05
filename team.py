@@ -64,6 +64,12 @@ def build_team(model_client: ChatCompletionClient, ctx: TicketContext) -> RoundR
             create_log_agent(model_client, ctx),
         ],
         termination_condition=termination,
+        # Agents with structured output send StructuredMessage[...] messages.
+        # A team must be told about these custom message types, or it rejects them.
+        custom_message_types=[
+            StructuredMessage[QueryAnalysis],
+            StructuredMessage[ResolutionResult],
+        ],
     )
 
 
