@@ -1,6 +1,10 @@
 """
 agents/ticket_logger.py - saves every ticket as one row in logs/tickets.csv
 and keeps an Excel copy (logs/tickets.xlsx) in sync.
+
+Escalated tickets start with review_status "Pending review". A support person
+can approve (and edit) the reply in the app's Human Review tab, which updates
+the same row: human-in-the-loop.
 """
 import csv
 
@@ -16,6 +20,8 @@ COLUMNS = [
     "category", "urgency", "sentiment", "language", "risk_flags",
     "kb_sources", "kb_best_score", "coverage", "confidence", "grounding",
     "response", "status", "escalation_reason", "processing_seconds",
+    # human-in-the-loop
+    "review_status", "reviewed_reply", "reviewer_note", "reviewed_at",
 ]
 
 
@@ -33,23 +39,46 @@ def next_ticket_id() -> str:
     return f"TKT-{(max(numbers) if numbers else 0) + 1:04d}"
 
 
-def append_ticket(row: dict) -> None:
-    """Add one ticket to the CSV log, then refresh the Excel copy."""
-    LOG_DIR.mkdir(exist_ok=True)
+def read_tickets() -> pd.DataFrame:
+    """The whole log as a table, always with all COLUMNS (empty if no tickets yet)."""
     if not CSV_PATH.exists():
-        # utf-8-sig adds a marker so Excel shows Tamil/Hindi text correctly
-        with open(CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
-            csv.DictWriter(f, fieldnames=COLUMNS).writeheader()
-    with open(CSV_PATH, "a", newline="", encoding="utf-8") as f:
-        csv.DictWriter(f, fieldnames=COLUMNS, extrasaction="ignore").writerow(row)
+        return pd.DataFrame(columns=COLUMNS)
+    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig", dtype=str, keep_default_na=False)
+    df = df.reindex(columns=COLUMNS, fill_value="")
+    # Tickets logged before the review step existed: give them a review status too
+    missing = df["review_status"] == ""
+    df.loc[missing, "review_status"] = df.loc[missing, "status"].map(
+        lambda s: "Pending review" if s == "Escalated" else "Not needed")
+    return df
+
+
+def _write_all(df: pd.DataFrame) -> None:
+    """Rewrite the CSV (utf-8-sig so Excel shows Tamil/Hindi correctly) and the Excel copy."""
+    LOG_DIR.mkdir(exist_ok=True)
+    df = df.reindex(columns=COLUMNS, fill_value="")
+    df.to_csv(CSV_PATH, index=False, encoding="utf-8-sig")
     try:
-        read_tickets().to_excel(XLSX_PATH, index=False)
+        df.to_excel(XLSX_PATH, index=False)
     except Exception as exc:  # e.g. the Excel file is open in Excel right now
         print(f"[ticket log] Excel copy not updated ({exc}). The CSV log is complete.")
 
 
-def read_tickets() -> pd.DataFrame:
-    """The whole log as a table (empty table if there are no tickets yet)."""
-    if not CSV_PATH.exists():
-        return pd.DataFrame(columns=COLUMNS)
-    return pd.read_csv(CSV_PATH, encoding="utf-8-sig", dtype=str, keep_default_na=False)
+def append_ticket(row: dict) -> None:
+    """Add one ticket to the log."""
+    defaults = {
+        "review_status": "Pending review" if row.get("status") == "Escalated" else "Not needed",
+        "reviewed_reply": "", "reviewer_note": "", "reviewed_at": "",
+    }
+    df = read_tickets()
+    df = pd.concat([df, pd.DataFrame([{**defaults, **row}])], ignore_index=True)
+    _write_all(df)
+
+
+def update_ticket(ticket_id: str, updates: dict) -> None:
+    """Change fields of one existing ticket (used by the human review step)."""
+    df = read_tickets()
+    mask = df["ticket_id"] == ticket_id
+    for key, value in updates.items():
+        if key in COLUMNS:
+            df.loc[mask, key] = value
+    _write_all(df)

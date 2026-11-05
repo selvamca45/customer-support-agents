@@ -1,0 +1,18 @@
+[theme]
+base = "light"
+primaryColor = "#2f6fb2"
+backgroundColor = "#f6f8fb"
+secondaryBackgroundColor = "#eaf0f7"
+textColor = "#1f2a37"
+
+[server]
+headless = true
+# 127.0.0.1 + port 8502 avoid the company VPN/proxy problem seen with localhost:8501,
+# so the app starts with one command:  streamlit run app.py
+address = "127.0.0.1"
+port = 8502
+
+[browser]
+serverAddress = "127.0.0.1"
+serverPort = 8502
+gatherUsageStats = false
