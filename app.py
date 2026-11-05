@@ -26,9 +26,10 @@ from agents.ticket_logger import read_tickets, update_ticket
 from team import Step, run_ticket
 from tests.test_cases import TEST_CASES
 from ui.about import render_about
-from ui.theme import CSS, hero_html
+from ui.theme import CSS, footer_html, hero_html, nav_html
 
-st.set_page_config(page_title="BluePeak AI Support Desk", page_icon="🎧", layout="wide")
+st.set_page_config(page_title="BluePeak Support Desk", page_icon="🏔️", layout="wide",
+                   initial_sidebar_state="collapsed")
 
 AGENTS = {
     "query_agent": ("🔎", "Query Agent"),
@@ -138,32 +139,15 @@ def bar_chart(series: pd.Series, label: str, order: list[str] | None = None,
             .configure_view(strokeWidth=0))
 
 
-# ----------------------------------------------------------------- sidebar
-with st.sidebar:
-    st.markdown("### BluePeak Support Desk")
-    st.caption("AI customer support automation")
-    st.markdown(
-        "**Quick start**\n"
-        "1. Open **New ticket** and pick a sample complaint.\n"
-        "2. Press **Answer this complaint** and watch the agents work.\n"
-        "3. Approve escalated replies in **Human review**.\n"
-        "4. See every ticket in **Ticket log** and trends in **Dashboard**."
-    )
-    st.divider()
-    st.markdown("**System status**")
-    try:
-        kb = load_kb()
-        st.markdown(f"Knowledge base: {len(kb.chunks)} passages from "
-                    f"{len({c.source for c in kb.chunks})} policy documents")
-        st.markdown(f"Search: {kb.mode}")
-    except Exception as exc:
-        st.error(f"The knowledge base could not load: {exc}")
-    st.markdown(f"Model: `{MODEL_NAME}`")
-    st.divider()
-    st.caption("Built with AutoGen, OpenAI and Streamlit for the Social Eagle "
-               "AI Engineering Program.")
-
 # ----------------------------------------------------------------- header
+try:
+    kb = load_kb()
+    kb_summary = f"{len(kb.chunks)} policy passages, {kb.mode.split(' ')[0]} search"
+except Exception as exc:  # e.g. no API key or no internet
+    kb_summary = "Knowledge base not loaded"
+    st.error(f"The knowledge base could not load: {exc}")
+st.markdown(nav_html(MODEL_NAME, kb_summary), unsafe_allow_html=True)
+
 log_df = read_tickets()
 if len(log_df):
     n_resolved = int((log_df["status"] == "Resolved").sum())
@@ -390,3 +374,5 @@ with tab_dash:
 # ----------------------------------------------------------------- about
 with tab_about:
     render_about()
+
+st.markdown(footer_html(), unsafe_allow_html=True)
