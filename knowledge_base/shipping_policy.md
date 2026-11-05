@@ -18,7 +18,15 @@ Last updated: 1 October 2026
 - Order statuses: Ordered, Packed, Shipped, Out for Delivery, Delivered.
 
 ## Late or delayed orders
-- The estimated delivery date is shown in My Order- The estimated delivery date is shown in My Oer delays of up to 2 business days can happen because of weather, f- The ls or high order- The estimated delivery date is shown in My Order- The estimated delivery date is shown in My Oerup- The estimated delivery date is shown in My Order- The estimated delivery date is shown upda- The estimated delivery date is shown in My Order- The estimated delivery date is shown in My Oer del can choose a full refund (including any- The estimated delivery date is shown in My Order- The estimated d a- The estimated delivery date is showis - The estimated deal- The estimated delivery date is shown in My Order- The ch- The estimated delivery date is shown in My Order- The estid wa- The estimated dese co- The estimated delivery date is shown in My Order- The estimated dot - The estimated delivery date is shown in My Order- Tred" status through My Orders > Report a Problem.
+- The estimated delivery date is shown in My Orders and in the order confirmation email.
+- Courier delays of up to 2 business days can happen because of weather, festivals or high order volumes.
+- If your order is more than 2 business days past the estimated delivery date, contact support with your order ID. We open a courier investigation within 24 hours and send you an update within 48 hours.
+- If your order is more than 7 business days past the estimated delivery date, you can choose a full refund (including any shipping fee) or a free express re-shipment.
+- If an Express order arrives late, the Rs. 149 express fee is refunded automatically.
+
+## Order marked delivered but not received
+- First check with neighbours, family members or building security, and wait 24 hours, because couriers sometimes mark orders delivered early.
+- If you still have not received it, report it within 48 hours of the "Delivered" status through My Orders > Report a Problem.
 - The investigation takes up to 5 business days. If the courier confirms the package was lost, we send a free replacement or a full refund.
 
 ## Changing the address or cancelling an order

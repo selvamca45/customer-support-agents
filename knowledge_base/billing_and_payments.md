@@ -13,8 +13,19 @@ Last updated: 1 October 2026
 ## Duplicate or multiple charges
 - Sometimes a bank shows a temporary hold (authorisation) for a failed attempt. These holds are released by the bank within 7 business days.
 - If you were charged more than once for the same order, our Payments team verifies the transactions with the payment gateway.
-- Confirmed duplicate charges ar- Confirmed duplicate charges ar- Confirmed duplicaio- Confirmed duplicate charges ar- Confca- Confirmed duplicate chargPayments specialist, who contac- Confirmed duplicate charges ar- Confirmed duplicate charges ar- Confirmed duplicaiou have- Confirmed duplicate charges ar- Confirmed duplicate charges ar- Confirmed dupliay- Confirmed duplicate charges ar- Confirmed duplicate charges ar- Confirmed dug a- Confirmed duplicate charges ar- Cat BluePeak Store has already started, to avoid a double refund.
+- Confirmed duplicate charges are refunded within 5-7 business days after verification.
+- All duplicate or multiple charge cases are handled by a human Payments specialist, who contacts the customer within 4 business hours.
+
+## Payment disputes and chargebacks
+- If you have raised a dispute or chargeback with your bank, the case is handled only by our Payments team.
+- Support agents cannot promise the outcome of a dispute.
+- Raising a chargeback may pause any refund that BluePeak Store has already started, to avoid a double refund.
 
 ## Invoices
-- A GST invoice is available for every order at My Orders >- A GST invoice is available for every order at My Orders >- A GST invoice is available for every order at Myckout. It cannot be added after the o- A GST invoice is available for every order at My Orders >- A GST invoice is available for every order at My Orders >- A GST invoice is avees.
+- A GST invoice is available for every order at My Orders > Download Invoice, after the order is shipped.
+- To add a GST number to an invoice, it must be entered at checkout. It cannot be added after the order is placed.
+
+## Coupons and discounts
+- Only one coupon can be used per order.
+- Coupons do not apply to shipping or Cash on Delivery fees.
 - If you return an item from an order that used a coupon, the refund is the amount you actually paid.
