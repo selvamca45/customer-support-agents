@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import get_model_client  # noqa: E402
 from agents.escalation import decide_escalation  # noqa: E402
 from agents.knowledge_agent import create_knowledge_agent  # noqa: E402
-from agents.log_agent import TicketContext, create_log_agent  # noqa: E402
+from agents.log_agent import TicketContext, create_log_agent, validate_concern  # noqa: E402
 from agents.query_agent import create_query_agent  # noqa: E402
 from agents.resolution_agent import create_resolution_agent  # noqa: E402
 from agents.ticket_logger import CSV_PATH, XLSX_PATH, read_tickets  # noqa: E402
@@ -43,6 +43,23 @@ def part_a_rules() -> None:
         ok += status == expected
         print(f"   [{'PASS' if status == expected else 'FAIL'}] {name:20} -> {status:9} {reasons}")
     print(f"   {ok}/{len(checks)} rule checks passed.\n")
+
+    print("PART A2 - Log Agent concerns need real evidence (no AI)")
+    complaint = "This is the third time I am writing to you and my mother got hurt by the blender."
+    concern_checks = [
+        ("no concern", "none", "", False),
+        ("quote is in complaint", "repeated_complaint", "third time I am writing", True),
+        ("health quote", "health_or_injury", "my mother got hurt", True),
+        ("invented quote", "repeated_complaint", "I complained last week", False),
+        ("unknown type", "customer_is_rude", "third time", False),
+    ]
+    ok = 0
+    for name, concern, evidence, expect_accepted in concern_checks:
+        accepted, note = validate_concern(complaint, concern, evidence)
+        good = bool(accepted) == expect_accepted
+        ok += good
+        print(f"   [{'PASS' if good else 'FAIL'}] {name:22} -> {accepted or note or 'no concern'}")
+    print(f"   {ok}/{len(concern_checks)} concern checks passed.\n")
 
 
 async def run_ticket(case: dict, model_client) -> dict:
