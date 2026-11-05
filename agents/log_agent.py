@@ -82,6 +82,11 @@ class TicketContext:
     steps: list = field(default_factory=list)   # timeline of agent steps (for the UI)
     stop_reason: str = ""                       # why the team stopped
     error: str = ""                             # set if something went wrong
+    llm_calls: int = 0                          # language-model calls made by the agents
+    prompt_tokens: int = 0                      # tokens sent to the model
+    completion_tokens: int = 0                  # tokens written by the model
+    evidence: dict | None = None                # photo check: description + supports
+    channel: str = "Support desk"               # "Customer portal" or "Support desk"
 
 
 def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
@@ -105,6 +110,7 @@ def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
         confidence=confidence,
         grounded=check["grounded"],
         extra_concern=extra_concern,
+        photo_mismatch=bool(ctx.evidence) and ctx.evidence.get("supports") == "no",
     )
 
     if check["grounded"]:
@@ -134,6 +140,9 @@ def build_ticket_row(ctx: TicketContext, extra_concern: str = "") -> dict:
         "status": status,
         "escalation_reason": "; ".join(reasons),
         "processing_seconds": f"{time.perf_counter() - ctx.started_at:.1f}",
+        "channel": ctx.channel,
+        "evidence_check": (f"{ctx.evidence['supports']}: {ctx.evidence['description']}"
+                           if ctx.evidence else ""),
     }
 
 

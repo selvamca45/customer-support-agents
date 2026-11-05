@@ -33,13 +33,13 @@ from autogen_agentchat.messages import (
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_core.models import ChatCompletionClient
 
-from config import get_model_client
+from config import estimate_cost_usd, get_model_client
 from agents.kb_search import parse_kb_output
 from agents.knowledge_agent import create_knowledge_agent
 from agents.log_agent import TicketContext, build_ticket_row, create_log_agent
 from agents.query_agent import QueryAnalysis, create_query_agent
 from agents.resolution_agent import ResolutionResult, create_resolution_agent
-from agents.ticket_logger import append_ticket
+from agents.ticket_logger import append_ticket, update_ticket
 
 MAX_MESSAGES = 10  # task + 4 agents = 5 messages normally; 10 is a safe upper limit
 
@@ -73,14 +73,19 @@ def build_team(model_client: ChatCompletionClient, ctx: TicketContext) -> RoundR
     )
 
 
-def build_task(complaint: str, customer_name: str = "", order_id: str = "") -> str:
+def build_task(complaint: str, customer_name: str = "", order_id: str = "",
+               evidence: dict | None = None) -> str:
     """The first message of the conversation: the new ticket."""
-    return (
+    task = (
         "New support ticket.\n"
         f"Customer name: {customer_name or 'not given'}\n"
         f"Order ID: {order_id or 'not given'}\n"
         f"Complaint: {complaint}"
     )
+    if evidence:
+        task += (f"\nPhoto attached by the customer (checked by AI): {evidence['description']} "
+                 f"Does it support the complaint: {evidence['supports']}.")
+    return task
 
 
 def to_step(item, ctx: TicketContext) -> Step | None:
@@ -127,6 +132,8 @@ async def run_ticket(
     order_id: str = "",
     model_client: ChatCompletionClient | None = None,
     on_step: Callable[[Step], None] | None = None,
+    evidence: dict | None = None,
+    channel: str = "Support desk",
 ) -> TicketContext:
     """
     Run the whole team on one complaint. Returns the TicketContext, whose
@@ -136,13 +143,26 @@ async def run_ticket(
     own_client = model_client is None
     model_client = model_client or get_model_client()
     ctx = TicketContext(complaint, customer_name, order_id)
+    ctx.channel = channel
+    if evidence:  # the photo check is a model call too: count it in the cost
+        ctx.evidence = evidence
+        ctx.llm_calls += 1
+        ctx.prompt_tokens += evidence.get("prompt_tokens", 0)
+        ctx.completion_tokens += evidence.get("completion_tokens", 0)
     team = build_team(model_client, ctx)
 
     try:
-        async for item in team.run_stream(task=build_task(complaint, customer_name, order_id)):
+        async for item in team.run_stream(
+                task=build_task(complaint, customer_name, order_id, evidence)):
             if isinstance(item, TaskResult):
                 ctx.stop_reason = item.stop_reason or ""
                 continue
+            # Count the tokens of every language-model call (for the cost estimate)
+            usage = getattr(item, "models_usage", None)
+            if usage is not None:
+                ctx.llm_calls += 1
+                ctx.prompt_tokens += usage.prompt_tokens
+                ctx.completion_tokens += usage.completion_tokens
             # Store each agent's output so the Log Agent's tool can read it
             if isinstance(item, StructuredMessage) and isinstance(item.content, QueryAnalysis):
                 ctx.analysis = item.content
@@ -173,6 +193,17 @@ async def run_ticket(
         if on_step:
             on_step(step)
 
+    # Add the AI usage and cost to the logged row
+    cost = estimate_cost_usd(ctx.prompt_tokens, ctx.completion_tokens)
+    usage_fields = {
+        "llm_calls": str(ctx.llm_calls),
+        "prompt_tokens": str(ctx.prompt_tokens),
+        "completion_tokens": str(ctx.completion_tokens),
+        "cost_usd": f"{cost:.6f}",
+    }
+    ctx.result.update(usage_fields)
+    update_ticket(ctx.result["ticket_id"], usage_fields)
+
     if own_client:
         await model_client.close()
     return ctx
@@ -194,6 +225,8 @@ async def _main() -> None:
     if r["escalation_reason"]:
         print(f"Escalation reason: {r['escalation_reason']}")
     print(f"Stop reason: {ctx.stop_reason or ctx.error}")
+    print(f"AI usage: {r['llm_calls']} model calls, {r['prompt_tokens']} + {r['completion_tokens']} "
+          f"tokens, about ${float(r['cost_usd']):.5f}")
 
 
 if __name__ == "__main__":

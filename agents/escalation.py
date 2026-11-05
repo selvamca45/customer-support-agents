@@ -14,6 +14,7 @@ Rules from the assignment (Task 5), plus one of our own (grounding check):
   5. the Resolution Agent's confidence is low
   6. the reply failed the grounding check (possible invented facts)
   7. the Log Agent raised an extra concern
+  8. the customer's photo does not match the complaint (checked by AI)
 """
 
 LOW_CONFIDENCE = 0.5
@@ -35,6 +36,7 @@ def decide_escalation(
     confidence: float,
     grounded: bool,
     extra_concern: str = "",
+    photo_mismatch: bool = False,
 ) -> tuple[str, list[str]]:
     """Return ("Resolved" or "Escalated", list of reasons)."""
     reasons: list[str] = []
@@ -53,4 +55,6 @@ def decide_escalation(
         reasons.append("Reply failed grounding check")
     if extra_concern and extra_concern.strip():
         reasons.append(f"Log agent: {extra_concern.strip()}")
+    if photo_mismatch:
+        reasons.append("Photo does not match the complaint")
     return ("Escalated" if reasons else "Resolved"), reasons

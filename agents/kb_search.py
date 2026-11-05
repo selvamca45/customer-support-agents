@@ -7,6 +7,9 @@ How it works (a small RAG, "Retrieval-Augmented Generation", pipeline):
 2. EMBED:  each passage is turned into a vector (a list of numbers that captures
            its MEANING) with OpenAI's embedding model. Vectors are cached in
            kb_index/ so we only pay for them once.
+   STORE:  the vectors are stored in a ChromaDB vector database (chroma_db/),
+           which does the nearest-neighbour search. If ChromaDB is not installed,
+           the same vectors are searched in memory with NumPy instead.
 3. SEARCH: the query is embedded too, and we compare it with every passage using
            cosine similarity (meaning match), plus a keyword score (word match).
            This "hybrid" search understands that "parcel not here" means
@@ -15,8 +18,8 @@ How it works (a small RAG, "Retrieval-Augmented Generation", pipeline):
            result is NO_MATCH, so the system admits it does not know instead of
            guessing (this is how test case 6 gets escalated).
 
-If embeddings are unavailable (no network, no credit), it falls back to keyword
-search only, so the app never crashes.
+Fallbacks, so the app never crashes: no ChromaDB -> in-memory NumPy search;
+no embeddings (no network or credit) -> keyword search only.
 """
 import hashlib
 import json
@@ -37,6 +40,8 @@ MIN_KEYWORD_SCORE = float(os.getenv("KB_MIN_KEYWORD_SCORE", "0.34"))  # keyword-
 TOP_K = 4                 # return at most 4 passages
 MAX_GAP_FROM_BEST = 0.20  # drop passages much weaker than the best one
 CACHE_FILE = PROJECT_ROOT / "kb_index" / "embeddings.json"
+CHROMA_DIR = PROJECT_ROOT / "chroma_db"
+CHROMA_COLLECTION = "bluepeak_policies"
 
 SEMANTIC_WEIGHT = 0.8
 KEYWORD_WEIGHT = 0.2
@@ -101,13 +106,26 @@ class KnowledgeBase:
         self._chunk_terms = [tokenize(c.embed_text) for c in self.chunks]
         self._client = None
         self.vectors: np.ndarray | None = None
+        self.collection = None          # ChromaDB collection, when available
+        self.store = "keywords only"    # where the vectors live (shown in the app)
         self.mode = "keyword"
         try:
             self.vectors = self._load_or_build_vectors()
+            self.store = "in-memory vectors"
             self.mode = "hybrid (embeddings + keywords)"
         except Exception as exc:  # no network / no credit / any API problem
             print(f"[knowledge base] Embeddings unavailable ({type(exc).__name__}: {exc}). "
                   "Using keyword search only.")
+            return
+        try:
+            self.collection = self._sync_chroma()
+            self.store = "ChromaDB"
+            self.mode = "hybrid (ChromaDB vectors + keywords)"
+        except ImportError:
+            print("[knowledge base] ChromaDB is not installed; searching the vectors in memory.")
+        except Exception as exc:
+            print(f"[knowledge base] ChromaDB unavailable ({type(exc).__name__}: {exc}); "
+                  "searching the vectors in memory.")
 
     # ---------- embeddings ----------
     def _embed(self, texts: list[str]) -> np.ndarray:
@@ -131,7 +149,52 @@ class KnowledgeBase:
                 cache[keys[i]] = vec.tolist()
             CACHE_FILE.parent.mkdir(exist_ok=True)
             CACHE_FILE.write_text(json.dumps(cache), encoding="utf-8")
+        self._keys = keys
         return np.array([cache[k] for k in keys], dtype=np.float32)
+
+    # ---------- ChromaDB vector store ----------
+    def _sync_chroma(self):
+        """Store every passage vector in a persistent ChromaDB collection.
+        Passages that changed are added, removed ones are deleted."""
+        import chromadb
+        from chromadb.config import Settings
+
+        client = chromadb.PersistentClient(path=str(CHROMA_DIR),
+                                           settings=Settings(anonymized_telemetry=False))
+        collection = client.get_or_create_collection(
+            CHROMA_COLLECTION, metadata={"hnsw:space": "cosine"})
+        existing = set(collection.get(include=[])["ids"])
+        wanted = dict(zip(self._keys, range(len(self.chunks))))
+        stale = [i for i in existing if i not in wanted]
+        if stale:
+            collection.delete(ids=stale)
+        new = [k for k in self._keys if k not in existing]
+        if new:
+            idx = [wanted[k] for k in new]
+            collection.add(
+                ids=new,
+                embeddings=[self.vectors[i].tolist() for i in idx],
+                documents=[self.chunks[i].embed_text for i in idx],
+                metadatas=[{"source": self.chunks[i].source, "section": self.chunks[i].section}
+                           for i in idx],
+            )
+        return collection
+
+    def _semantic_scores(self, query_vector: np.ndarray) -> np.ndarray:
+        """Cosine similarity of the query with every passage."""
+        if self.collection is None:
+            return self.vectors @ query_vector
+        # Nearest-neighbour search in ChromaDB. We ask for every passage (the
+        # knowledge base is small) with its stored vector, and compute the exact
+        # cosine similarity so scores match the calibrated threshold.
+        result = self.collection.query(query_embeddings=[query_vector.tolist()],
+                                       n_results=len(self.chunks), include=["embeddings"])
+        position = {key: i for i, key in enumerate(self._keys)}
+        scores = np.zeros(len(self.chunks), dtype=np.float32)
+        for key, emb in zip(result["ids"][0], result["embeddings"][0]):
+            if key in position:
+                scores[position[key]] = float(np.dot(np.asarray(emb, dtype=np.float32), query_vector))
+        return scores
 
     # ---------- search ----------
     def keyword_scores(self, query: str) -> np.ndarray:
@@ -145,7 +208,7 @@ class KnowledgeBase:
         """Score every passage for the query, best first."""
         scores = self.keyword_scores(query)
         if self.vectors is not None:
-            semantic = self.vectors @ self._embed([query])[0]  # cosine similarity
+            semantic = self._semantic_scores(self._embed([query])[0])  # cosine similarity
             scores = SEMANTIC_WEIGHT * semantic + KEYWORD_WEIGHT * scores
         order = np.argsort(-scores)
         return [(self.chunks[i], float(scores[i])) for i in order]
@@ -173,6 +236,13 @@ def get_kb() -> KnowledgeBase:
     global _KB
     if _KB is None:
         _KB = KnowledgeBase()
+    return _KB
+
+
+def rebuild_kb() -> KnowledgeBase:
+    """Re-read knowledge_base/ (e.g. after a document was added) and re-index it."""
+    global _KB
+    _KB = KnowledgeBase()
     return _KB
 
 

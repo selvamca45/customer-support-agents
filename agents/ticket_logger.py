@@ -2,9 +2,10 @@
 agents/ticket_logger.py - saves every ticket as one row in logs/tickets.csv
 and keeps an Excel copy (logs/tickets.xlsx) in sync.
 
-Escalated tickets start with review_status "Pending review". A support person
-can approve (and edit) the reply in the app's Human Review tab, which updates
-the same row: human-in-the-loop.
+Escalated tickets start with review_status "Pending review" and case_status "Open".
+A support person approves (and edits) the reply and updates the case status in the
+app's Case management tab, which updates the same row: human-in-the-loop. The
+customer sees the approved reply and any message in the portal's "My tickets".
 """
 import csv
 
@@ -20,8 +21,13 @@ COLUMNS = [
     "category", "urgency", "sentiment", "language", "risk_flags",
     "kb_sources", "kb_best_score", "coverage", "confidence", "grounding",
     "response", "status", "escalation_reason", "processing_seconds",
-    # human-in-the-loop
+    # AI usage and cost
+    "llm_calls", "prompt_tokens", "completion_tokens", "cost_usd",
+    # human-in-the-loop and case management
     "review_status", "reviewed_reply", "reviewer_note", "reviewed_at",
+    "case_status", "message_to_customer",
+    # customer portal
+    "channel", "evidence_file", "evidence_check",
 ]
 
 
@@ -49,6 +55,14 @@ def read_tickets() -> pd.DataFrame:
     missing = df["review_status"] == ""
     df.loc[missing, "review_status"] = df.loc[missing, "status"].map(
         lambda s: "Pending review" if s == "Escalated" else "Not needed")
+    # Case status: answered tickets are closed, escalated ones stay open until a person closes them
+    missing = df["case_status"] == ""
+    df.loc[missing, "case_status"] = [
+        "Closed" if (st == "Resolved" or rv == "Approved") else "Open"
+        for st, rv in zip(df.loc[missing, "status"], df.loc[missing, "review_status"])
+    ]
+    missing = df["channel"] == ""
+    df.loc[missing, "channel"] = "Support desk"
     return df
 
 
@@ -65,9 +79,12 @@ def _write_all(df: pd.DataFrame) -> None:
 
 def append_ticket(row: dict) -> None:
     """Add one ticket to the log."""
+    escalated = row.get("status") == "Escalated"
     defaults = {
-        "review_status": "Pending review" if row.get("status") == "Escalated" else "Not needed",
+        "review_status": "Pending review" if escalated else "Not needed",
         "reviewed_reply": "", "reviewer_note": "", "reviewed_at": "",
+        "case_status": "Open" if escalated else "Closed",
+        "message_to_customer": "",
     }
     df = read_tickets()
     df = pd.concat([df, pd.DataFrame([{**defaults, **row}])], ignore_index=True)

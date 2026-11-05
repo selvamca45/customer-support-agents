@@ -26,6 +26,21 @@ LOG_DIR = PROJECT_ROOT / "logs"
 # Model can be changed in .env with OPENAI_MODEL=... (default is cheap and fast)
 MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+# Speech-to-text model for voice messages (falls back to whisper-1)
+TRANSCRIBE_MODEL = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+
+# Prices used for the cost estimate (US dollars per 1 million tokens).
+# Defaults are OpenAI's list prices for gpt-4o-mini; change them in .env if you
+# use another model or the prices change.
+PRICE_INPUT_PER_M = float(os.getenv("PRICE_INPUT_PER_M", "0.15"))
+PRICE_OUTPUT_PER_M = float(os.getenv("PRICE_OUTPUT_PER_M", "0.60"))
+USD_TO_INR = float(os.getenv("USD_TO_INR", "88"))
+
+
+def estimate_cost_usd(prompt_tokens: int, completion_tokens: int) -> float:
+    """Estimated cost of the language-model calls for one ticket."""
+    return (prompt_tokens * PRICE_INPUT_PER_M + completion_tokens * PRICE_OUTPUT_PER_M) / 1_000_000
+
 
 def get_api_key() -> str:
     """Read the API key from .env and fail with a clear message if it is missing."""

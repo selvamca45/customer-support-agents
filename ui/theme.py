@@ -169,6 +169,28 @@ a.bp-btn:focus-visible {{ outline: 3px solid #7fb0e6; outline-offset: 2px; }}
 .empty {{ border: 2px dashed #cfdcec; border-radius: 12px; padding: 26px; text-align: center;
           color: {MUTED}; font-size: 1rem; }}
 
+/* ---------- view switch ---------- */
+.stApp [data-testid="stRadio"] > div[role="radiogroup"] {{ gap: 8px; }}
+.stApp [data-testid="stRadio"] label {{ background: #fff; border: 1.5px solid #cfdcec; border-radius: 999px;
+  padding: 6px 16px 6px 10px; }}
+.stApp [data-testid="stRadio"] label:has(input:checked) {{ border-color: {INK}; background: #eaf0f7; }}
+.stApp [data-testid="stRadio"] label p {{ font-weight: 700 !important; color: {INK} !important; }}
+
+/* ---------- customer portal ---------- */
+.bp-cust {{ background: {INK}; color: #fff; border-radius: 18px; padding: 26px 32px;
+            margin-bottom: 18px; display: flex; justify-content: space-between; gap: 24px;
+            align-items: center; flex-wrap: wrap; }}
+.bp-cust .title {{ font-size: 1.85rem !important; font-weight: 800 !important; color: #fff;
+                   letter-spacing: -0.02em; line-height: 1.15; }}
+.bp-cust .lead {{ font-size: 1.05rem !important; color: #eaf1fa; margin-top: 8px; max-width: 40em;
+                  line-height: 1.55; }}
+.bp-cust .ways {{ display: flex; gap: 10px; flex-wrap: wrap; }}
+.bp-cust .way {{ background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.28);
+                 border-radius: 12px; padding: 10px 14px; font-size: 0.92rem !important;
+                 color: #fff; font-weight: 600; }}
+.bp-cust .way span {{ display: block; font-weight: 500; color: #c7dcf3; font-size: 0.84rem !important; }}
+.tk-meta {{ color: {MUTED}; font-size: 0.88rem; }}
+
 /* ---------- footer ---------- */
 .bp-footer {{ margin-top: 40px; padding: 22px 2px 8px; border-top: 1px solid #dfe6ef;
               display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
@@ -234,4 +256,20 @@ def footer_html() -> str:
     return f"""<div class="bp bp-footer">
 <div>Developed by <b>Selvakumar</b>, Social Eagle AI Engineering Program. Built with AutoGen, OpenAI and Streamlit.</div>
 <div><a href="{GITHUB_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
+</div>"""
+
+
+def customer_hero_html(name: str = "") -> str:
+    """Welcome band for the customer portal."""
+    who = f", {html.escape(name.strip().split()[0])}" if name.strip() else ""
+    return f"""<div class="bp bp-cust">
+<div>
+<div class="title">Hi{who}! How can we help today?</div>
+<div class="lead">Tell us what went wrong in any language. Our support agents answer from BluePeak Store's policies in seconds, and a specialist takes over when your case needs a person.</div>
+</div>
+<div class="ways">
+<div class="way">Type or speak<span>English, Tamil, Hindi and more</span></div>
+<div class="way">Add a photo<span>for damaged or wrong items</span></div>
+<div class="way">Track your tickets<span>see replies from our team</span></div>
+</div>
 </div>"""

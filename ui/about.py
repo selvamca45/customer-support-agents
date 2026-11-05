@@ -28,7 +28,7 @@ digraph G {
   rules [label="Escalation rules\n(plain Python)", fillcolor="#fff7e6"];
   store [label="logs/tickets.csv\nlogs/tickets.xlsx", shape=folder, fillcolor="#f1f5f9"];
   resolved [label="Resolved\nreply sent", fillcolor="#e3f6e3", color="#0ca30c"];
-  human [label="Escalated\nHuman Review tab", fillcolor="#fbe7e7", color="#d03b3b"];
+  human [label="Escalated\nCase management tab", fillcolor="#fbe7e7", color="#d03b3b"];
 
   customer -> query -> knowledge -> resolution -> log;
   knowledge -> kb [dir=both, label="hybrid search"];
@@ -77,7 +77,8 @@ def render_about() -> None:
 4. **Log Agent** calls the `log_ticket` tool, which applies the escalation rules, writes one
    row to the CSV and Excel log, and answers `LOGGED`, which ends the team's conversation.
 5. **Resolved** replies are ready to send. **Escalated** tickets wait in the
-   Human Review tab, where a person edits and approves the reply.
+   Case management tab, where a person edits and approves the reply, sets the case status
+   and writes a message the customer sees under My tickets in the customer portal.
 """
     )
 
@@ -92,7 +93,8 @@ def render_about() -> None:
 | Escalation rules written in Python | Inconsistent decisions; the same ticket always gets the same result |
 | Log Agent concerns must quote the customer | The AI escalating for something the customer never said |
 | Safety net in the team | A lost ticket if the AI service fails; it is still logged and escalated |
-| Human Review | Risky replies going out without a person's approval |
+| Case management (human review) | Risky replies going out without a person's approval |
+| Photo check by AI | A photo that does not match the complaint going unnoticed; such cases are escalated |
 """
     )
 
@@ -113,6 +115,19 @@ into the log as the reason:
 """
     )
 
+    st.subheader("Two views: customers and the support team")
+    st.markdown(
+        """
+| Customer portal | Support team |
+|---|---|
+| Chat in any language, by typing or recording a voice message (OpenAI speech to text, with the text shown for checking before sending) | **New ticket**: the live timeline of all four agents |
+| Attach a photo; the AI describes it and checks it matches the complaint | **Case management**: approve or edit escalated replies, set the case status, message the customer |
+| A progress bar shows which agent is working (1/4 to 4/4) | **Ticket log** with filters and CSV / Excel downloads |
+| **My tickets**: status of every ticket and replies approved by a specialist | **Dashboard** with charts and the AI cost per ticket |
+| | **Knowledge base**: read and upload policy documents, rebuild the ChromaDB index, test the search |
+"""
+    )
+
     st.subheader("Technology")
     st.markdown(
         """
@@ -120,7 +135,10 @@ into the log as the reason:
 |---|---|---|
 | Agents | AutoGen AgentChat 0.7 | `AssistantAgent`, `RoundRobinGroupChat`, `TextMentionTermination`, `MaxMessageTermination`, tools, structured output |
 | Language model | OpenAI `gpt-4o-mini` | Understanding complaints and writing replies |
-| Search | OpenAI `text-embedding-3-small` + keyword scoring (NumPy) | Finding the right policy passage, cached locally |
+| Vector store | ChromaDB (persistent, `chroma_db/`) + OpenAI `text-embedding-3-small` | Storing the 34 passage vectors and the nearest-neighbour search |
+| Search scoring | Hybrid: 80 % meaning + 20 % exact keywords | Finding the right policy passage; `NO_MATCH` below 0.33 |
+| Voice and photos | OpenAI speech to text, `gpt-4o-mini` vision | Voice messages in any language, photo checks |
+| Cost tracking | Token counts from every agent call | Cost per ticket and per 1,000 tickets on the Dashboard |
 | Data checks | Pydantic | Validating every agent output |
 | Logging | pandas, openpyxl | `tickets.csv` and `tickets.xlsx`, one row per ticket |
 | Interface | Streamlit, Altair | This app, live agent timeline, dashboard |

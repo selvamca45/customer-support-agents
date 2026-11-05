@@ -5,6 +5,7 @@ python-dotenv
 pandas
 openpyxl
 pydantic
-
 numpy
 openai
+chromadb
+altair

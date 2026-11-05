@@ -10,3 +10,4 @@ chroma_db/
 .streamlit/secrets.toml
 kb_index/
 ~$*
+logs/evidence/

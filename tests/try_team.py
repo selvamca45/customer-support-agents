@@ -19,7 +19,7 @@ from tests.test_cases import TEST_CASES  # noqa: E402
 
 async def main() -> None:
     model_client = get_model_client()
-    rows, passed = [], 0
+    rows, costs, passed = [], [], 0
 
     for case in TEST_CASES:
         ctx = await run_ticket(case["complaint"], case["customer_name"], case["order_id"],
@@ -35,10 +35,15 @@ async def main() -> None:
               f"sources: {r['kb_sources']} | confidence {r['confidence']} | grounding {r['grounding']}")
         print(f"   status: {r['status']} (expected {case['expected_status']})"
               f"{' | reason: ' + r['escalation_reason'] if r['escalation_reason'] else ''}")
+        print(f"   AI usage: {r.get('llm_calls', '?')} calls, "
+              f"{r.get('prompt_tokens', '?')} + {r.get('completion_tokens', '?')} tokens, "
+              f"${float(r.get('cost_usd') or 0):.5f}")
         rows.append(float(r["processing_seconds"]))
+        costs.append(float(r.get("cost_usd") or 0))
 
     print(f"\nResult: {passed}/{len(TEST_CASES)} tickets got the expected status.")
     print(f"Average time per ticket: {sum(rows) / len(rows):.1f}s")
+    print(f"Average cost per ticket: ${sum(costs) / len(costs):.5f}")
     await model_client.close()
 
 
