@@ -1,0 +1,8 @@
+autogen-agentchat>=0.7
+autogen-ext[openai]>=0.7
+streamlit
+python-dotenv
+pandas
+openpyxl
+pydantic
+
