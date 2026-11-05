@@ -29,7 +29,10 @@ import numpy as np
 from config import KB_DIR, PROJECT_ROOT, get_api_key
 
 EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
-MIN_SCORE = float(os.getenv("KB_MIN_SCORE", "0.40"))          # hybrid search
+# Calibrated on our 9 test cases (Step 5): the weakest correct match scored 0.41
+# and the strongest wrong match (gift cards) scored 0.25. 0.33 is the midpoint,
+# giving an equal safety margin on both sides.
+MIN_SCORE = float(os.getenv("KB_MIN_SCORE", "0.33"))          # hybrid search
 MIN_KEYWORD_SCORE = float(os.getenv("KB_MIN_KEYWORD_SCORE", "0.34"))  # keyword-only fallback
 TOP_K = 3                 # return at most 3 passages
 MAX_GAP_FROM_BEST = 0.15  # drop passages much weaker than the best one
