@@ -6,6 +6,7 @@ config.py - one place for settings shared by the whole project.
 - Builds the OpenAI model client that every agent uses.
 """
 import os
+import warnings
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,6 +15,10 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 # Folder that contains this file = the project root
 PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv(PROJECT_ROOT / ".env")
+
+# AutoGen + the newest Pydantic print a harmless warning for structured output.
+# It does not affect results, so we hide it to keep the output readable.
+warnings.filterwarnings("ignore", message="Pydantic serializer warnings")
 
 KB_DIR = PROJECT_ROOT / "knowledge_base"
 LOG_DIR = PROJECT_ROOT / "logs"

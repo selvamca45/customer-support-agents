@@ -3,11 +3,13 @@ tests/test_cases.py - the complaints we test the system with.
 
 Cases 1-6 come from the assignment PDF. Cases 7-9 are our own extra cases
 (the assignment asks for at least two of your own).
+expected_source = the policy file that should be found (None = nothing should match).
 """
 
 TEST_CASES = [
     {
         "id": 1,
+        "expected_source": "shipping_policy.md",
         "complaint": "Where is my order? It was supposed to arrive yesterday.",
         "customer_name": "Priya",
         "order_id": "ORD-4512",
@@ -16,6 +18,7 @@ TEST_CASES = [
     },
     {
         "id": 2,
+        "expected_source": "refund_policy.md",
         "complaint": "I want to return the shoes I bought last week. How do I get a refund?",
         "customer_name": "Arjun",
         "order_id": "ORD-4513",
@@ -24,6 +27,7 @@ TEST_CASES = [
     },
     {
         "id": 3,
+        "expected_source": "account_and_login.md",
         "complaint": "I forgot my password and can't log in.",
         "customer_name": "Meena",
         "order_id": "",
@@ -32,6 +36,7 @@ TEST_CASES = [
     },
     {
         "id": 4,
+        "expected_source": "product_faq.md",
         "complaint": "The blender I received is broken. Can I get a replacement?",
         "customer_name": "Karthik",
         "order_id": "ORD-4520",
@@ -40,6 +45,7 @@ TEST_CASES = [
     },
     {
         "id": 5,
+        "expected_source": "billing_and_payments.md",
         "complaint": "You charged my card three times! Fix this now or I'm contacting my bank and a lawyer.",
         "customer_name": "Rahul",
         "order_id": "ORD-4533",
@@ -50,6 +56,7 @@ TEST_CASES = [
     },
     {
         "id": 6,
+        "expected_source": None,
         "complaint": "Do you sell gift cards for a company of 500 employees with custom branding?",
         "customer_name": "Anitha",
         "order_id": "",
@@ -59,6 +66,7 @@ TEST_CASES = [
     # ---- Our own test cases ----
     {
         "id": 7,
+        "expected_source": "account_and_login.md",
         "complaint": "Someone hacked my account. There are two orders I never placed and my address was changed.",
         "customer_name": "Vikram",
         "order_id": "",
@@ -68,6 +76,7 @@ TEST_CASES = [
     },
     {
         "id": 8,
+        "expected_source": "shipping_policy.md",
         "complaint": "என் ஆர்டர் இன்னும் வரவில்லை, 5 நாட்கள் ஆகிவிட்டது. தயவுசெய்து உதவுங்கள்.",
         "customer_name": "Lakshmi",
         "order_id": "ORD-4550",
@@ -77,6 +86,7 @@ TEST_CASES = [
     },
     {
         "id": 9,
+        "expected_source": "shipping_policy.md",
         "complaint": "Hi, can I still change the delivery address? My order has not shipped yet. Thanks!",
         "customer_name": "Sneha",
         "order_id": "ORD-4561",

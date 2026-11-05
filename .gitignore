@@ -8,3 +8,4 @@ logs/*.csv
 logs/*.xlsx
 chroma_db/
 .streamlit/secrets.toml
+kb_index/
