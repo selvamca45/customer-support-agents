@@ -8,8 +8,9 @@ Output (structured, validated): the reply, a confidence score (0-1), the source
 files it used, and whether the knowledge base actually answered the question.
 
 Extra safety (grounding_check): after the LLM writes the reply, plain Python
-checks that every number in the reply (days, fees, hours...) really appears in
-the retrieved passages, and that every cited source was really retrieved.
+checks that every number (days, fees, hours...) and every menu path
+(e.g. "My Account > My Orders") in the reply really appears in the retrieved
+passages, and that every cited source was really retrieved.
 This catches invented policies even if the LLM makes a mistake.
 """
 import re
@@ -49,16 +50,24 @@ GROUNDING RULES (most important):
 - Use ONLY facts that appear in the knowledge_agent's passages. Never invent timelines,
   fees, amounts, links, phone numbers, email addresses or policies.
 - Every number you write (days, hours, rupees, percentages) must come from the passages.
+- Never invent steps, buttons, menu paths or website pages. Write menu paths exactly as they
+  appear in the passages (for example "My Account > My Orders"). If the passages do not
+  explain how to do something, do not make up the steps.
+- Include the key limits from the passages that apply to this customer (time windows,
+  conditions, timelines), so the customer knows exactly what to expect.
 - If the passages say NO_MATCH or do not answer the question, say honestly that you do not
   have that information, and that the request has been passed to our support team who will
   get back to them. Do not guess. Set answered_from_kb to false and confidence below 0.3.
 
 STYLE:
+- The customer is already talking to BluePeak support. Never tell them to "contact support";
+  instead tell them what we will do next.
 - Greet the customer by name if a name is given, and mention the order ID if given.
-- Match the emotion: if the customer is Angry or Frustrated, start with a sincere,
-  specific apology. Never be defensive.
+- Apologise sincerely and specifically ONLY if the sentiment is Frustrated or Angry.
+  If the sentiment is Neutral or Positive, thank them instead of apologising.
 - Then give the answer. Use numbered steps when the customer has to do something.
-- End with what happens next.
+- End with what happens next, then sign off with "Warm regards," and "BluePeak Support Team"
+  on separate lines (translated if replying in another language).
 - Keep it under 150 words. Plain text, no markdown headings, no file names in the reply.
 - Write the reply in the customer's language (the "language" field of the analysis).
 
@@ -66,11 +75,13 @@ RISK CASES: if risk_flags contains legal_threat, fraud, payment_dispute or secur
 do not promise any outcome or refund. Explain that a specialist team will handle the case,
 using only what the passages say about it.
 
-CONFIDENCE:
-- 0.9-1.0: the passages fully and directly answer the question.
-- 0.6-0.8: the passages answer most of it.
-- 0.3-0.5: the passages only partly help.
-- below 0.3: the passages do not answer it (or NO_MATCH)."""
+CONFIDENCE = how completely the PASSAGES cover what the customer asked
+(not how happy the customer will be; escalation is decided separately):
+- 0.9-1.0: the passages contain everything needed (the exact steps or the exact policy).
+  Use this whenever "gaps" is empty.
+- 0.6-0.8: one secondary detail is not covered (describe it in "gaps").
+- 0.3-0.5: an important part of the question is not covered.
+- below 0.3: NO_MATCH, or the passages are about something else."""
 
 
 def create_resolution_agent(model_client: ChatCompletionClient) -> AssistantAgent:
@@ -84,11 +95,20 @@ def create_resolution_agent(model_client: ChatCompletionClient) -> AssistantAgen
     )
 
 
+_LIST_MARKER = re.compile(r"^\s*\d+[.)]\s", re.MULTILINE)   # "1. ", "2) " at line start
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+# A UI path such as "My Account > My Orders > Track Order" (Title Case words joined by ">")
+_TITLE = r"[A-Z][\w-]*(?: [A-Z][\w-]*)*"
+_UI_PATH = re.compile(rf"{_TITLE}(?:\s*>\s*{_TITLE})+")
 
 
 def _numbers(text: str) -> set[str]:
-    return {n.replace(",", "") for n in _NUMBER.findall(text or "")}
+    text = _LIST_MARKER.sub(" ", text or "")          # list numbering is not a fact
+    return {n.replace(",", "") for n in _NUMBER.findall(text)}
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\s*>\s*", " > ", re.sub(r"\s+", " ", text or "")).lower()
 
 
 def grounding_check(result: ResolutionResult, kb_text: str, kb_sources: list[str],
@@ -96,13 +116,17 @@ def grounding_check(result: ResolutionResult, kb_text: str, kb_sources: list[str
     """
     Verify the reply in plain Python (no AI):
     - every number in the reply appears in the passages, complaint or order ID
+    - every menu path (e.g. "My Account > My Orders") appears in the passages
     - every cited source file was really returned by the Knowledge Agent
     """
     allowed = _numbers(kb_text) | _numbers(complaint) | _numbers(order_id)
     ungrounded = sorted(n for n in _numbers(result.reply) if n not in allowed)
+    kb_norm = _norm(kb_text)
+    bad_paths = sorted({p for p in _UI_PATH.findall(result.reply) if _norm(p) not in kb_norm})
     invalid_sources = sorted(s for s in result.sources_used if s not in kb_sources)
     return {
-        "grounded": not ungrounded and not invalid_sources,
+        "grounded": not ungrounded and not bad_paths and not invalid_sources,
         "ungrounded_numbers": ungrounded,
+        "ungrounded_paths": bad_paths,
         "invalid_sources": invalid_sources,
     }

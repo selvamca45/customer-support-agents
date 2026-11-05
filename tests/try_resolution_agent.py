@@ -70,6 +70,7 @@ async def main() -> None:
               f"sources_used={result.sources_used}")
         print(f"   grounding: {'OK' if check['grounded'] else 'PROBLEM'} "
               f"(ungrounded numbers: {check['ungrounded_numbers'] or 'none'}, "
+              f"ungrounded menu paths: {check['ungrounded_paths'] or 'none'}, "
               f"invalid sources: {check['invalid_sources'] or 'none'})")
         if result.gaps:
             print(f"   gaps: {result.gaps}")

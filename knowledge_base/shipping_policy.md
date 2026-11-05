@@ -31,4 +31,6 @@ Last updated: 1 October 2026
 
 ## Changing the address or cancelling an order
 - You can change the delivery address or cancel for free while the order status is Ordered or Packed.
+- To change the address: go to My Account > My Orders, select the order and click Change Address. The new address is confirmed by email and SMS.
+- To cancel: go to My Account > My Orders, select the order and click Cancel Order. The refund follows the Refund Policy timelines.
 - Once the status is Shipped, the address cannot be changed. You can refuse the delivery or return the item after delivery under the Refund Policy.
