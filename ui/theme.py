@@ -174,6 +174,7 @@ a.bp-btn:focus-visible {{ outline: 3px solid #7fb0e6; outline-offset: 2px; }}
               display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
               color: {MUTED}; font-size: 0.92rem !important; }}
 .bp-footer a {{ color: {BLUE} !important; font-weight: 600; text-decoration: none; }}
+.bp-footer b {{ color: {INK}; font-weight: 700; }}
 
 @media (max-width: 860px) {{
   .bp-hero {{ grid-template-columns: 1fr; padding: 26px; gap: 24px; }}
@@ -231,6 +232,6 @@ def hero_html(total: int, automation: str, avg_seconds: str) -> str:
 
 def footer_html() -> str:
     return f"""<div class="bp bp-footer">
-<div>BluePeak Support Desk. Built with AutoGen, OpenAI and Streamlit for the Social Eagle AI Engineering Program.</div>
+<div>Developed by <b>Selvakumar</b>, Social Eagle AI Engineering Program. Built with AutoGen, OpenAI and Streamlit.</div>
 <div><a href="{GITHUB_URL}" target="_blank" rel="noopener">Source code on GitHub</a></div>
 </div>"""
