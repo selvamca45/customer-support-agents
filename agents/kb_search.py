@@ -34,7 +34,7 @@ EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
 # giving an equal safety margin on both sides.
 MIN_SCORE = float(os.getenv("KB_MIN_SCORE", "0.33"))          # hybrid search
 MIN_KEYWORD_SCORE = float(os.getenv("KB_MIN_KEYWORD_SCORE", "0.34"))  # keyword-only fallback
-TOP_K = 3                 # return at most 3 passages
+TOP_K = 4                 # return at most 4 passages
 MAX_GAP_FROM_BEST = 0.20  # drop passages much weaker than the best one
 CACHE_FILE = PROJECT_ROOT / "kb_index" / "embeddings.json"
 

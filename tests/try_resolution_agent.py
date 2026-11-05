@@ -19,6 +19,7 @@ from agents.knowledge_agent import create_knowledge_agent  # noqa: E402
 from agents.query_agent import create_query_agent  # noqa: E402
 from agents.resolution_agent import (  # noqa: E402
     ResolutionResult,
+    compute_confidence,
     create_resolution_agent,
     grounding_check,
 )
@@ -53,10 +54,11 @@ async def main() -> None:
 
         check = grounding_check(result, kb_text, kb_info["sources"],
                                 case["complaint"], case["order_id"])
+        confidence = compute_confidence(result.coverage, kb_info["best_score"], check["grounded"])
 
         # What we expect: honest "don't know" for NO_MATCH, grounded answer otherwise
         if case.get("expected_source") is None:
-            ok = not result.answered_from_kb and result.confidence < 0.6
+            ok = not result.answered_from_kb and confidence < 0.5
         else:
             ok = check["grounded"] and bool(result.sources_used)
         passed += ok
@@ -66,7 +68,8 @@ async def main() -> None:
         print(f"   category={analysis.category} | urgency={analysis.urgency} | "
               f"sentiment={analysis.sentiment} | language={analysis.language}")
         print(f"   kb sources: {', '.join(kb_info['sources']) or 'NO_MATCH'}")
-        print(f"   confidence={result.confidence:.2f} | answered_from_kb={result.answered_from_kb} | "
+        print(f"   coverage={result.coverage} -> confidence={confidence:.2f} | "
+              f"answered_from_kb={result.answered_from_kb} | "
               f"sources_used={result.sources_used}")
         print(f"   grounding: {'OK' if check['grounded'] else 'PROBLEM'} "
               f"(ungrounded numbers: {check['ungrounded_numbers'] or 'none'}, "
